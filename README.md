@@ -1,6 +1,6 @@
-# Hexbolt
+# HexboltMQ
 
-**Hexbolt** is a distributed message queueing framework designed for modern-day workflows. It focuses on delivering durable, fault-tolerant, highly performant, and highly available message queues. Hexbolt is built to support a wide range of advanced messaging patterns, including work queues, priority queues, fan-out, broadcast, and more. With strong consistency guarantees, compression, and poison pill detection, Hexbolt is an ideal choice for building reliable and scalable systems.
+**HexboltMQ** is a distributed message queueing framework designed for modern-day workflows. It focuses on delivering durable, fault-tolerant, highly performant, and highly available message queues. HexboltMQ is built to support a wide range of advanced messaging patterns, including work queues, priority queues, fan-out, broadcast, and more. With strong consistency guarantees, compression, and poison pill detection, HexboltMQ is an ideal choice for building reliable and scalable systems.
 
 ## Features
 
@@ -17,15 +17,15 @@
 ### Prerequisites
 
 - **Rust**: Ensure that you have the latest stable version of Rust installed. You can install Rust using [rustup](https://rustup.rs/).
-- **Docker**: (Optional) For running Hexbolt in a containerized environment.
+- **Docker**: (Optional) For running HexboltMQ in a containerized environment.
 
 ### Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/hexbolt.git
-   cd hexbolt
+   git clone https://github.com/adi3g/hexboltmq.git
+   cd hexboltmq
    ```
 
 2. Build the project:
@@ -34,15 +34,15 @@
    cargo build --release
    ```
 
-3. Run the Hexbolt server:
+3. Run the Hexboltmq server:
 
    ```bash
-   cargo run --bin hexbolt-server
+   cargo run --bin hexboltmq-server
    ```
 
 ### Usage
 
-Hexbolt provides both gRPC and REST APIs for interacting with the message queues.
+HexboltMQ provides both gRPC and REST APIs for interacting with the message queues.
 
 - **Enqueue a Message**: Send a message to a queue.
 - **Dequeue a Message**: Receive a message from a queue.
@@ -52,7 +52,7 @@ Refer to the API documentation for detailed usage instructions.
 
 ## Architecture Overview
 
-Hexbolt's architecture is designed for scalability and fault tolerance:
+HexboltMQ's architecture is designed for scalability and fault tolerance:
 
 - **Core**: Handles the main message queueing logic, including message routing, prioritization, and processing.
 - **Storage**: Manages both in-memory and persistent storage for queues, ensuring durability.
@@ -62,7 +62,7 @@ Hexbolt's architecture is designed for scalability and fault tolerance:
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute to Hexbolt, please follow these steps:
+Contributions are welcome! If you'd like to contribute to HexboltMQ, please follow these steps:
 
 1. Fork the repository.
 2. Create a new branch with a descriptive name.
@@ -73,7 +73,7 @@ Please read our [contributing guidelines](CONTRIBUTING.md) for more information.
 
 ## License
 
-Hexbolt is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+HexboltMQ is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
