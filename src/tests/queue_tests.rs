@@ -89,3 +89,34 @@ fn test_priority_queue_push_and_pop() {
     // The queue should be empty now
     assert_eq!(queue.size(), 0);
 }
+
+
+#[tokio::test]
+async fn test_queue_push_and_pop() -> Result<(), QueueError> {
+    // Create a new queue
+    let queue = Queue::new();
+
+    // Create a message
+    let msg1 = Message { id: 1, content: "Test message 1".to_string(), priority: 1 };
+
+    // Push a message to the queue
+    queue.push(msg1.clone()).await?;
+
+    // Pop the message from the queue
+    let popped_msg = queue.pop().await?;
+    assert_eq!(popped_msg, Some(msg1));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_queue_empty_pop() -> Result<(), QueueError> {
+    // Create a new queue
+    let queue = Queue::new();
+
+    // Pop from an empty queue should return None
+    let popped_msg = queue.pop().await?;
+    assert_eq!(popped_msg, None);
+
+    Ok(())
+}

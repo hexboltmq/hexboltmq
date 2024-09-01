@@ -1,5 +1,3 @@
-// src/queue/mod.rs
-
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use tokio::sync::Mutex;
@@ -36,6 +34,13 @@ impl PartialEq for Message {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
+}
+
+/// Custom errors that can occur when interacting with the queue.
+#[derive(Debug)]
+pub enum QueueError {
+    /// Error occurring when a lock cannot be acquired (not applicable for Tokio Mutex).
+    LockError,
 }
 
 /// A thread-safe priority queue for managing `Message` objects.
@@ -76,13 +81,18 @@ impl Queue {
     ///
     /// ```
     /// use hexboltmq::queue::{Queue, Message};
+    /// use tokio_test::block_on;
+    ///
     /// let queue = Queue::new();
-    /// queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await;
+    /// block_on(async {
+    ///     queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await.unwrap();
+    /// });
     /// ```
-    pub async fn push(&self, message: Message) {
+    pub async fn push(&self, message: Message) -> Result<(), QueueError> {
         let mut queue = self.messages.lock().await;
         queue.push(message.clone());
         println!("Message pushed: {:?}", message);
+        Ok(())
     }
 
     /// Removes and returns the highest priority message from the queue.
@@ -93,18 +103,22 @@ impl Queue {
     ///
     /// ```
     /// use hexboltmq::queue::{Queue, Message};
+    /// use tokio_test::block_on;
+    ///
     /// let queue = Queue::new();
-    /// queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await;
-    /// let msg = queue.pop().await;
-    /// assert_eq!(msg.unwrap().priority, 5);
+    /// block_on(async {
+    ///     queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await.unwrap();
+    ///     let msg = queue.pop().await.unwrap();
+    ///     assert_eq!(msg.unwrap().priority, 5);
+    /// });
     /// ```
-    pub async fn pop(&self) -> Option<Message> {
+    pub async fn pop(&self) -> Result<Option<Message>, QueueError> {
         let mut queue = self.messages.lock().await;
         let msg = queue.pop();
         if let Some(ref m) = msg {
             println!("Message popped: {:?}", m);
         }
-        msg
+        Ok(msg)
     }
 
     /// Returns the current size of the queue.
@@ -113,13 +127,17 @@ impl Queue {
     ///
     /// ```
     /// use hexboltmq::queue::{Queue, Message};
+    /// use tokio_test::block_on;
+    ///
     /// let queue = Queue::new();
-    /// assert_eq!(queue.size().await, 0);
-    /// queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await;
-    /// assert_eq!(queue.size().await, 1);
+    /// block_on(async {
+    ///     assert_eq!(queue.size().await.unwrap(), 0);
+    ///     queue.push(Message { id: 1, content: String::from("Hello"), priority: 5 }).await.unwrap();
+    ///     assert_eq!(queue.size().await.unwrap(), 1);
+    /// });
     /// ```
-    pub async fn size(&self) -> usize {
+    pub async fn size(&self) -> Result<usize, QueueError> {
         let queue = self.messages.lock().await;
-        queue.len()
+        Ok(queue.len())
     }
 }
