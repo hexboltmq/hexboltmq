@@ -1,5 +1,7 @@
 // tests/test_queue.rs
-use hexboltmq::queue::{Queue, Message};
+use hexboltmq::queue::{Queue, Message, QueueError};
+use tokio::time::{sleep, Duration};
+use tokio::test;
 
 #[test]
 fn test_queue_push_and_pop() {
@@ -117,6 +119,62 @@ async fn test_queue_empty_pop() -> Result<(), QueueError> {
     // Pop from an empty queue should return None
     let popped_msg = queue.pop().await?;
     assert_eq!(popped_msg, None);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_delayed_message_push_and_pop() -> Result<(), QueueError> {
+    // Create a new queue
+    let queue = Queue::new();
+
+    // Create a message with a 2-second delay
+    let msg = Message { id: 1, content: "Delayed message".to_string(), priority: 1 };
+
+    // Push the message to the queue with a 2-second delay
+    queue.push(msg.clone(), Duration::from_secs(2)).await?;
+
+    // Immediately attempt to pop (should get None because of delay)
+    assert!(queue.pop().await?.is_none());
+
+    // Wait for the delay to pass
+    sleep(Duration::from_secs(2)).await;
+
+    // Now the message should be available
+    let popped_msg = queue.pop().await?;
+    assert_eq!(popped_msg, Some(msg));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_batch_processing() -> Result<(), QueueError> {
+    // Create a new queue
+    let queue = Queue::new();
+
+    // Create messages with varying delays
+    let msg1 = Message { id: 1, content: "Message 1".to_string(), priority: 1 };
+    let msg2 = Message { id: 2, content: "Message 2".to_string(), priority: 5 };
+    let msg3 = Message { id: 3, content: "Message 3".to_string(), priority: 10 };
+
+    // Push messages to the queue with different delays
+    queue.push(msg1.clone(), Duration::from_secs(1)).await?;
+    queue.push(msg2.clone(), Duration::from_secs(0)).await?;
+    queue.push(msg3.clone(), Duration::from_secs(2)).await?;
+
+    // Immediately attempt to pop a batch (should only get msg2)
+    let batch = queue.pop_batch(3).await?;
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].id, msg2.id);
+
+    // Wait for the delays to pass
+    sleep(Duration::from_secs(2)).await;
+
+    // Now all messages should be available
+    let batch = queue.pop_batch(3).await?;
+    assert_eq!(batch.len(), 2);
+    assert_eq!(batch[0].id, msg3.id); // Highest priority
+    assert_eq!(batch[1].id, msg1.id); // Next in line
 
     Ok(())
 }
