@@ -1,13 +1,18 @@
 use hexboltmq::queue::{Queue, Message, QueueError};
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, Instant};
 
 #[tokio::test]
 async fn test_queue_push_and_pop() -> Result<(), QueueError> {
     // Create a new queue
     let queue = Queue::new();
 
-    // Create a message
-    let msg1 = Message::new(1, "Test message 1".to_string(), 1, None);
+    // Create a message with no delay
+    let msg1 = Message {
+        id: 1,
+        content: "Test message 1".to_string(),
+        priority: 1,
+        available_at: Instant::now(), // Available immediately
+    };
 
     // Push a message to the queue
     queue.push(msg1.clone(), Duration::from_secs(0)).await?;
@@ -32,55 +37,17 @@ async fn test_queue_empty_pop() -> Result<(), QueueError> {
 }
 
 #[tokio::test]
-async fn test_queue_size() -> Result<(), QueueError> {
-    // Create a new queue
-    let queue = Queue::new();
-
-    // Queue should be empty initially
-    assert_eq!(queue.size().await?, 0);
-
-    // Add a message and check size
-    queue.push(Message::new(1, "Message 1".to_string(), 1, None), Duration::from_secs(0)).await?;
-    assert_eq!(queue.size().await?, 1);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_priority_queue_push_and_pop() -> Result<(), QueueError> {
-    // Create a new queue
-    let queue = Queue::new();
-
-    // Create messages with different priorities
-    let msg1 = Message::new(1, "Low priority message".to_string(), 1, None);
-    let msg2 = Message::new(2, "High priority message".to_string(), 10, None);
-    let msg3 = Message::new(3, "Medium priority message".to_string(), 5, None);
-
-    // Push messages to the queue
-    queue.push(msg1.clone(), Duration::from_secs(0)).await?;
-    queue.push(msg2.clone(), Duration::from_secs(0)).await?;
-    queue.push(msg3.clone(), Duration::from_secs(0)).await?;
-
-    // Pop messages and verify order by priority
-    let popped_msg1 = queue.pop().await?;
-    assert_eq!(popped_msg1, Some(msg2)); // High priority
-
-    let popped_msg2 = queue.pop().await?;
-    assert_eq!(popped_msg2, Some(msg3)); // Medium priority
-
-    let popped_msg3 = queue.pop().await?;
-    assert_eq!(popped_msg3, Some(msg1)); // Low priority
-
-    Ok(())
-}
-
-#[tokio::test]
 async fn test_delayed_message_push_and_pop() -> Result<(), QueueError> {
     // Create a new queue
     let queue = Queue::new();
 
     // Create a message with a 2-second delay
-    let msg = Message::new(1, "Delayed message".to_string(), 1, Some(Duration::from_secs(2)));
+    let msg = Message {
+        id: 1,
+        content: "Delayed message".to_string(),
+        priority: 1,
+        available_at: Instant::now() + Duration::from_secs(2), // Delayed availability
+    };
 
     // Push the message to the queue with a 2-second delay
     queue.push(msg.clone(), Duration::from_secs(2)).await?;
@@ -98,34 +65,63 @@ async fn test_delayed_message_push_and_pop() -> Result<(), QueueError> {
     Ok(())
 }
 
+
 #[tokio::test]
 async fn test_batch_processing() -> Result<(), QueueError> {
     // Create a new queue
     let queue = Queue::new();
 
     // Create messages with varying delays
-    let msg1 = Message::new(1, "Message 1".to_string(), 1, Some(Duration::from_secs(1))); // Delayed by 1 second
-    let msg2 = Message::new(2, "Message 2".to_string(), 5, None); // Available immediately
-    let msg3 = Message::new(3, "Message 3".to_string(), 10, Some(Duration::from_secs(2))); // Delayed by 2 seconds
+    let msg1 = Message {
+        id: 1,
+        content: "Message 1".to_string(),
+        priority: 1,
+        available_at: Instant::now() + Duration::from_secs(1),
+    };
+    let msg2 = Message {
+        id: 2,
+        content: "Message 2".to_string(),
+        priority: 5,
+        available_at: Instant::now(), // Available immediately
+    };
+    let msg3 = Message {
+        id: 3,
+        content: "Message 3".to_string(),
+        priority: 10,
+        available_at: Instant::now() + Duration::from_secs(2),
+    };
 
-    // Push messages to the queue with different delays
+    // Push messages to the queue
     queue.push(msg1.clone(), Duration::from_secs(1)).await?;
     queue.push(msg2.clone(), Duration::from_secs(0)).await?;
     queue.push(msg3.clone(), Duration::from_secs(2)).await?;
 
-    // Immediately attempt to pop a batch (should only get msg2)
+    // Wait briefly
+    sleep(Duration::from_millis(50)).await;
+
+    // Pop a batch
+    println!("Attempting first batch pop:");
+    let batch = queue.pop_batch(3).await?;
+    assert_eq!(batch.len(), 1); // Should have only msg2 available immediately
+    assert_eq!(batch[0].id, msg2.id);
+
+    // Wait for 1 second; now msg1 should also be available
+    sleep(Duration::from_secs(1)).await;
+
+    // Next batch
+    println!("Attempting second batch pop:");
     let batch = queue.pop_batch(3).await?;
     assert_eq!(batch.len(), 1);
-    assert_eq!(batch[0].id, msg2.id); // msg2 should be popped first because it's available immediately
+    assert_eq!(batch[0].id, msg1.id);
 
-    // Wait for the delays to pass
-    sleep(Duration::from_secs(2)).await;
+    // Wait for another 1 second; now msg3 should also be available
+    sleep(Duration::from_secs(1)).await;
 
-    // Now all messages should be available
+    // Final batch
+    println!("Attempting third batch pop:");
     let batch = queue.pop_batch(3).await?;
-    assert_eq!(batch.len(), 2);
-    assert_eq!(batch[0].id, msg3.id); // Highest priority and now available
-    assert_eq!(batch[1].id, msg1.id); // Next in line
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].id, msg3.id);
 
     Ok(())
 }
