@@ -57,3 +57,35 @@ fn test_queue_size() {
     queue.pop();
     assert_eq!(queue.size(), 1);
 }
+
+#[test]
+fn test_priority_queue_push_and_pop() {
+    // Create a new queue
+    let queue = Queue::new();
+
+    // Create messages with different priorities
+    let msg1 = Message { id: 1, content: "Low priority message".to_string(), priority: 1 };
+    let msg2 = Message { id: 2, content: "High priority message".to_string(), priority: 10 };
+    let msg3 = Message { id: 3, content: "Medium priority message".to_string(), priority: 5 };
+
+    // Push messages to the queue
+    queue.push(msg1.clone());
+    queue.push(msg2.clone());
+    queue.push(msg3.clone());
+
+    // Check the size of the queue
+    assert_eq!(queue.size(), 3);
+
+    // Pop messages and verify order by priority
+    let popped_msg1 = queue.pop();
+    assert_eq!(popped_msg1, Some(msg2)); // High priority
+
+    let popped_msg2 = queue.pop();
+    assert_eq!(popped_msg2, Some(msg3)); // Medium priority
+
+    let popped_msg3 = queue.pop();
+    assert_eq!(popped_msg3, Some(msg1)); // Low priority
+
+    // The queue should be empty now
+    assert_eq!(queue.size(), 0);
+}
