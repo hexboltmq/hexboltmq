@@ -1,4 +1,4 @@
-mod queue;
+pub mod queue;
 mod producer;
 mod consumer;
 mod network;
