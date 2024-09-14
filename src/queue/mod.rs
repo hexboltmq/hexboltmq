@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
-use tokio::time::{Duration, Instant};
+use tokio::time::{sleep, Duration, Instant};
 
 /// A message that can be added to the queue.
 ///
@@ -20,6 +20,10 @@ pub struct Message {
     pub priority: u8,
     /// The time when the message will be available for processing.
     pub available_at: Instant,
+    /// Number of times the message has been retried
+    pub retry_count: u8,
+    /// Maximum number of retries allowed
+    pub max_retries: u8,
 }
 
 // Implement ordering for the message to be used in a priority queue.
@@ -224,5 +228,72 @@ impl Queue {
     pub async fn size(&self) -> Result<usize, QueueError> {
         let queue = self.messages.lock().await;
         Ok(queue.len())
+    }
+
+    /// Acknowledges a message, confirming its successful processing.
+    ///
+    /// # Arguments
+    ///
+    /// * `message_id` - The ID of the message to acknowledge.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the message is successfully acknowledged, or a `QueueError` if not.
+    pub async fn acknowledge(&self, message_id: u64) -> Result<(), QueueError> {
+        let mut queue = self.messages.lock().await;
+        // Remove the acknowledged message from the queue (if needed, or update status in persistence layer)
+        queue.retain(|message| message.id != message_id);
+        println!("Message acknowledged: {}", message_id);
+        Ok(())
+    }
+
+    /// Retries a failed message with a backoff delay, if it has not exceeded the maximum retries.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The message to retry.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the message is successfully re-queued, or a `QueueError` if not.
+    pub async fn retry(&self, mut message: Message) -> Result<(), QueueError> {
+        if message.retry_count >= message.max_retries {
+            // Push to dead-letter queue or handle exceeded retries
+            println!("Message exceeded max retries, moving to dead-letter queue: {:?}", message);
+            self.push_to_dead_letter(message).await?;
+            return Ok(());
+        }
+
+        // Increment the retry count and calculate a backoff delay (e.g., exponential backoff)
+        message.retry_count += 1;
+        let backoff_delay = Duration::from_secs(2u64.pow(message.retry_count as u32));
+
+        // Wait for the backoff delay before retrying
+        sleep(backoff_delay).await;
+
+        // Re-enqueue the message with a new available time
+        let new_available_at = Instant::now() + backoff_delay;
+        let retry_message = Message { available_at: new_available_at, ..message };
+
+        let mut queue = self.messages.lock().await;
+        queue.push(retry_message.clone());
+        println!("Message retried: {:?}", retry_message);
+
+        Ok(())
+    }
+
+    /// Moves a message to the dead-letter queue after exceeding the maximum retry attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The message to move to the dead-letter queue.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the message is successfully moved, or a `QueueError` if not.
+    pub async fn push_to_dead_letter(&self, message: Message) -> Result<(), QueueError> {
+        // Implement logic to push messages to a dead-letter queue
+        println!("Message pushed to dead-letter queue: {:?}", message);
+        Ok(())
     }
 }
