@@ -50,7 +50,7 @@ impl Consumer {
                 process_message(&message.content);
 
                 // Acknowledge the message (if the queue supports acknowledgment)
-                locked_queue.ack(message.id).await.unwrap();
+                locked_queue.acknowledge(message.id).await.unwrap();
             } else {
                 // If no message is available, wait before retrying
                 println!("No messages available, retrying...");
