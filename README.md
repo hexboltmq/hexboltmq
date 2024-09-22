@@ -1,5 +1,13 @@
 # HexboltMQ
 
+<br>
+
+<p align="center">
+    <img width="200" src="https://github.com/user-attachments/assets/b8630ff7-efcd-4edd-a10a-663b377a0521" alt="HexboltMQ Icon">
+</p>
+
+<br>
+
 **HexboltMQ** is a distributed message queueing framework designed for modern-day workflows. It focuses on delivering durable, fault-tolerant, highly performant, and highly available message queues. HexboltMQ is built to support a wide range of advanced messaging patterns, including work queues, priority queues, fan-out, broadcast, and more. With strong consistency guarantees, compression, and poison pill detection, HexboltMQ is an ideal choice for building reliable and scalable systems.
 
 ## Features
